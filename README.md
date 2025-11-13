@@ -4,9 +4,9 @@
 
 | 🌍 Language | Link |
 |--------------|------|
-| 🇺🇸 **English** | [Go to English README](https://raw.githubusercontent.com/dhungx/arch-hyprland-auto/refs/heads/main/readme-lang/en-readme.md) |
-| 🇻🇳 **Tiếng Việt** | [Đọc bằng Tiếng Việt](https://raw.githubusercontent.com/dhungx/arch-hyprland-auto/refs/heads/main/readme-lang/vi-readme.md) |
-| 🇰🇷 **한국어** | [한국어로 보기](https://raw.githubusercontent.com/dhungx/arch-hyprland-auto/refs/heads/main/readme-lang/kr-readme.md) |
+| 🇺🇸 **English** | [Go to English README](https://github.com/dhungx/arch-hyprland-auto/blob/main/readme-lang/en-readme.md) |
+| 🇻🇳 **Tiếng Việt** | [Đọc bằng Tiếng Việt](https://github.com/dhungx/arch-hyprland-auto/blob/main/readme-lang/vi-readme.md) |
+| 🇰🇷 **한국어** | [한국어로 보기](https://github.com/dhungx/arch-hyprland-auto/blob/main/readme-lang/kr-readme.md) |
 
 ---
 
