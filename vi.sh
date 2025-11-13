@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  HYPRLAND FULL AUTO INSTALL 2025 v3.2 FINAL – 100% PERFECT ZERO-ERROR
-#  Tác giả: TYNO x (20/11/2025)
+#  Tác giả: TYNO (21/11/2025)
 #  TESTED: 312/312 MÁY (Intel/AMD/NVIDIA/RTX 40/Intel ARC/Apple M1-M2 via Asahi)
 #  GitHub: https://github.com/dhungx/arch-hyprland-auto
 # =============================================================================
@@ -22,10 +22,24 @@ cat << "EOF"
 EOF
 echo -e "\e[0m"
 
-log()    { echo -e "\e[1;32m[+] $*\e[0m"; }
-warn()   { echo -e "\e[1;33m[!] $*\e[0m"; }
-err()    { echo -e "\e[1;31m[-] $*\e[0m" >&2; }
-success(){ echo -e "\e[1;92m[OK] $*\e[0m"; }
+log()    { echo -e "\e[1;32m[+] $(date '+%H:%M:%S') $*\e[0m"; }
+warn()   { echo -e "\e[1;33m[!] $(date '+%H:%M:%S') $*\e[0m"; }
+err()    { echo -e "\e[1;31m[-] $(date '+%H:%M:%S') $*\e[0m" >&2; }
+success(){ echo -e "\e[1;92m[OK] $(date '+%H:%M:%S') $*\e[0m"; }
+
+# Cleanup handler trên exit
+cleanup() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        err "Script bị lỗi (exit code: $exit_code)"
+        if mountpoint -q /mnt; then
+            warn "Unmounting /mnt..."
+            umount -R /mnt 2>/dev/null || true
+        fi
+    fi
+    exit $exit_code
+}
+trap cleanup EXIT
 
 # === 0. KIỂM TRA NGHIÊM NGẶT ===
 [[ $EUID -ne 0 ]] && { err "Chạy bằng root! (sudo ./install.sh)"; exit 1; }
@@ -41,9 +55,10 @@ read -rp "Nhập ổ đĩa (vd: /dev/sda): " DISK
 
 warn "TOÀN BỘ DỮ LIỆU TRÊN $DISK SẼ BỊ XÓA VĨNH VIỄN!"
 for i in {1..3}; do
-    read -rp "Xác nhận lần $i/$DISK): " confirm
+    read -rp "Xác nhận lần $i/3 (gõ lại $DISK): " confirm
     [[ "$confirm" == "$DISK" ]] || { err "Không khớp! Hủy."; exit 1; }
 done
+log "Xác nhận thành công, sẵn sàng phân vùng"
 
 # === 2. CHỌN MÚI GIỜ + NGÔN NGỮ ===
 PS3=$'\nChọn múi giờ: '
@@ -92,8 +107,9 @@ reflector --country Vietnam,Singapore,Japan,'South Korea' --latest 10 --sort rat
 # === 5. PACSTRAP + NVIDIA/AMD/INTEL AUTO ===
 log "Pacstrap (tự động nhận GPU)..."
 GPU=""
-lspci | grep -i nvidia &>/dev/null && GPU="nvidia-dkms nvidia-utils nvidia-settings libva-nvidia-driver"
-lspci | grep -i amd.*vga &>/dev/null && GPU+=" amdvlk"
+lspci | grep -qi nvidia && GPU="nvidia-dkms nvidia-utils nvidia-settings libva-nvidia-driver"
+lspci | grep -qi "amd.*vga\|amd.*radeon" && GPU+=" amdvlk libva-mesa-driver"
+lspci | grep -qi "intel.*arc\|intel.*iris" && GPU+=" intel-media-driver"
 pacstrap /mnt base base-devel linux linux-firmware linux-headers amd-ucode intel-ucode git sudo networkmanager neovim btrfs-progs efibootmgr $GPU || { err "Pacstrap lỗi!"; exit 1; }
 
 # === 6. FSTAB + EXT4 OPTIMIZE ===
@@ -109,7 +125,7 @@ set -euo pipefail
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc --utc
 
-sed -i '/^#$LOCALE/s/^#//' /etc/locale.gen  # FIX 1: đúng cách uncomment
+sed -i "/^#${LOCALE//./\\.}/s/^#//" /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
@@ -143,7 +159,8 @@ options root=UUID=\$ROOT_UUID rw quiet splash loglevel=3 rd.systemd.show_status=
 A
 
 useradd -m -G wheel,audio,video,storage,optical,input -s /bin/bash arch
-echo "arch:123" | chpasswd
+read -rsp "Nhập password cho user 'arch' (không hiển thị): " USERPASS
+echo "$USERPASS" | chpasswd -u arch 2>/dev/null || echo "arch:$USERPASS" | chpasswd
 echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/10-wheel
 chmod 0440 /etc/sudoers.d/10-wheel
 
@@ -245,7 +262,7 @@ echo -e "\e[1;38;5;165m"
 cat << EOF
    ╔═══════════════════════════════════════════════════════════╗
    ║   HYPRLAND 2025 v3.2 FINAL – 312/312 TESTED – ZERO ERROR   ║
-   ║   User: arch          Password: 123                       ║
+   ║   User: arch          Password: đã nhập lúc cài đặt         ║
    ║   Timezone: $TIMEZONE        Lang: $LOCALE            ║
    ║   → Tháo USB → reboot → Hyprland ĐẸP NHƯ IPAD PRO M2       ║
    ╚═══════════════════════════════════════════════════════════╝
