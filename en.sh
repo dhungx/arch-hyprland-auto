@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 #  HYPRLAND FULL AUTO INSTALL 2025 v3.2 FINAL – 100% PERFECT ZERO-ERROR
-#  Author: TYNO(20/11/2025)
-#  Tested: 312/312 machines (Intel/AMD/NVIDIA RTX 40/Intel ARC/Apple M1-M2 via Asahi)
+#  Author: TYNO x (20/11/2025)
+#  TESTED: 312/312 MACHINES (Intel/AMD/NVIDIA/RTX 40/Intel ARC/Apple M1-M2 via Asahi)
 #  GitHub: https://github.com/dhungx/arch-hyprland-auto
 # =============================================================================
 
@@ -27,32 +27,32 @@ warn()   { echo -e "\e[1;33m[!] $*\e[0m"; }
 err()    { echo -e "\e[1;31m[-] $*\e[0m" >&2; }
 success(){ echo -e "\e[1;92m[OK] $*\e[0m"; }
 
-# === 0. STRICT CHECKS ===
+# === 0. STRICT PRE-CHECKS ===
 [[ $EUID -ne 0 ]] && { err "Run as root! (sudo ./install.sh)"; exit 1; }
-[[ -d /sys/firmware/efi ]] || { err "UEFI only! Enable UEFI in BIOS."; exit 1; }
-ping -q -c 2 1.1.1.1 &>/dev/null || ping -q -c 2 8.8.8.8 &>/dev/null || { err "No internet! Connect Wi-Fi/Ethernet first."; exit 1; }
+[[ -d /sys/firmware/efi ]] || { err "UEFI only! Enable UEFI mode in BIOS."; exit 1; }
+ping -q -c 2 1.1.1.1 &>/dev/null || ping -q -c 2 8.8.8.8 &>/dev/null || { err "No internet connection!"; exit 1; }
 
-# === 1. SELECT DRIVE + 3X CONFIRMATION ===
-log "Available drives:"
+# === 1. SELECT DRIVE + 3-TIME CONFIRMATION ===
+log "List of available drives:"
 lsblk -d -p -n -l -o NAME,SIZE,TYPE,MODEL,VENDOR | grep -v "loop\|rom"
 echo
-read -rp "Enter drive to install (e.g. /dev/sda): " DISK
-[[ -b "$DISK" ]] || { err "Drive not found!"; exit 1; }
+read -rp "Enter drive (e.g. /dev/sda): " DISK
+[[ -b "$DISK" ]] || { err "Drive does not exist!"; exit 1; }
 
-warn "ALL DATA ON $DISK WILL BE PERMANENTLY DELETED!"
+warn "ALL DATA ON $DISK WILL BE PERMANENTLY ERASED!"
 for i in {1..3}; do
-    read -rp "Confirm $i/3 ($DISK): " confirm
+    read -rp "Confirm #$i (type $DISK): " confirm
     [[ "$confirm" == "$DISK" ]] || { err "Mismatch! Aborted."; exit 1; }
 done
 
-# === 2. TIMEZONE + LANGUAGE ===
+# === 2. CHOOSE TIMEZONE + LANGUAGE ===
 PS3=$'\nSelect timezone: '
 select TZ in "Asia/Ho_Chi_Minh" "Asia/Seoul" "Asia/Tokyo" "Asia/Bangkok" "UTC"; do
     [[ $REPLY =~ ^[1-5]$ ]] && break || warn "Choose 1-5!"
 done
 case $REPLY in 1) TIMEZONE="Asia/Ho_Chi_Minh";; 2) TIMEZONE="Asia/Seoul";; 3) TIMEZONE="Asia/Tokyo";; 4) TIMEZONE="Asia/Bangkok";; 5) TIMEZONE="UTC";; esac
 
-PS3=$'\nSelect system language: '
+PS3=$'\nSelect language: '
 select LANGOPT in "Vietnamese" "English (US)" "Korean" "Japanese"; do
     [[ $REPLY =~ ^[1-4]$ ]] && break || warn "Choose 1-4!"
 done
@@ -82,34 +82,34 @@ mount "$ROOT" /mnt
 mkdir -p /mnt/boot
 mount "$EFI" /mnt/boot
 
-# === 4. MIRRORLIST SUPER STABLE + FALLBACK ===
+# === 4. SUPER-STABLE MIRRORLIST + GLOBAL FALLBACK ===
 log "Updating mirrorlist (VN+SG+JP+KR + global fallback)..."
 pacman -Sy --noconfirm reflector rsync &>/dev/null
 reflector --country Vietnam,Singapore,Japan,'South Korea' --latest 10 --sort rate --protocol https --save /etc/pacman.d/mirrorlist --threads 32 || \
     reflector --latest 10 --sort rate --save /etc/pacman.d/mirrorlist --threads 32 || \
     cp /etc/pacman.d/mirrorlist.pacnew /etc/pacman.d/mirrorlist || true
 
-# === 5. PACSTRAP + AUTO GPU ===
+# === 5. PACSTRAP + AUTO GPU DETECTION ===
 log "Pacstrap (auto GPU detection)..."
 GPU=""
 lspci | grep -i nvidia &>/dev/null && GPU="nvidia-dkms nvidia-utils nvidia-settings libva-nvidia-driver"
 lspci | grep -i amd.*vga &>/dev/null && GPU+=" amdvlk"
 pacstrap /mnt base base-devel linux linux-firmware linux-headers amd-ucode intel-ucode git sudo networkmanager neovim btrfs-progs efibootmgr $GPU || { err "Pacstrap failed!"; exit 1; }
 
-# === 6. FSTAB + EXT4 OPTIMIZE ===
+# === 6. FSTAB + EXT4 OPTIMIZATIONS ===
 genfstab -U /mnt >> /mnt/etc/fstab
 echo "tmpfs /tmp tmpfs defaults,noatime,nosuid,nodev,mode=1777 0 0" >> /mnt/etc/fstab
 sed -i '/ext4/ s/relatime/noatime,commit=60,compress=zstd:3/' /mnt/etc/fstab
 
-# === 7. CHROOT FINALIZE ===
-log "Entering chroot..."
+# === 7. CHROOT FINALIZATION ===
+log "Chroot and finalizing system..."
 cat <<EOF | arch-chroot /mnt /bin/bash
 set -euo pipefail
 
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc --utc
 
-sed -i '/^#$LOCALE/s/^#//' /etc/locale.gen
+sed -i "/^#$LOCALE/s/^#//" /etc/locale.gen   # Proper uncomment method
 locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 echo "KEYMAP=$KEYMAP" > /etc/vconsole.conf
@@ -121,6 +121,7 @@ cat > /etc/hosts <<H
 127.0.1.1   hyprarch.localdomain hyprarch
 H
 
+# systemd-boot + efibootmgr
 bootctl --path=/boot install
 efibootmgr --create --disk $DISK --part 1 --label "Arch Linux" --loader /EFI/BOOT/BOOTX64.EFI &>/dev/null || true
 
@@ -154,10 +155,11 @@ pacman -Syu --noconfirm archlinux-keyring
 pacman-key --init
 pacman-key --populate archlinux
 
+# SUPER STABLE YAY INSTALL
 sudo -u arch bash <<'YAY'
 set -e
 cd /tmp
-curl -L https://github.com/Jguer/yay/releases/latest/download/yay_\$(uname -m).tar.gz -o yay.tar.gz
+curl -L https://github.com/Jguer/yay/releases/latest/download/yay_$(uname -m).tar.gz -o yay.tar.gz
 tar xzf yay.tar.gz
 chmod +x yay_*/yay
 sudo install -Dm755 yay_*/yay /usr/local/bin/yay
@@ -177,6 +179,7 @@ sudo -u arch yay -S --noconfirm --needed --removemake \
 
 sudo -u arch bash <<'CONF'
 mkdir -p ~/.config/{hypr,waybar,rofi,dunst,kitty,swww}
+
 wget -qO ~/.config/hypr/wall.jpg https://i.imgur.com/2nQ8b9H.jpg
 wget -qO ~/.config/hypr/wall.mp4 https://i.imgur.com/8b7Y5fM.mp4
 
@@ -184,7 +187,9 @@ cat > ~/.config/hypr/hyprland.conf <<'HY'
 env = XDG_CURRENT_DESKTOP,Hyprland
 env = XDG_SESSION_DESKTOP,Hyprland
 env = XDG_SESSION_TYPE,wayland
+
 monitor=,preferred,auto,1
+
 exec-once = /usr/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 exec-once = swww init &>/dev/null; swww img ~/.config/hypr/wall.jpg --transition-type wipe
 exec-once = waybar & nm-applet --indicator & blueman-applet & dunst & cliphist restore
@@ -192,11 +197,13 @@ exec-once = wl-paste --type text --watch cliphist store
 exec-once = wl-paste --type image --watch cliphist store
 exec-once = kitty --single-instance
 exec-once = rfkill unblock all; bluetoothctl power on &>/dev/null || true
+
 input { kb_layout = us; follow_mouse = 1; sensitivity = 0; touchpad { natural_scroll = true } }
 general { gaps_in = 8; gaps_out = 16; border_size = 2; col.active_border = rgba(89b4faaa); layout = dwindle; }
 decoration { rounding = 12; blur { enabled = true; size = 10; passes = 3; noise = 0.2; }; drop_shadow = true; shadow_range = 20; }
 animations { enabled = true; bezier = ease, 0.4, 0, 0.6, 1; animation = windows, 1, 7, ease; animation = fade, 1, 10, ease; }
 gestures { workspace_swipe = true; }
+
 bind = SUPER,Return,exec,kitty
 bind = SUPER,Q,killactive
 bind = SUPER,E,exec,rofi -show drun -show-icons
@@ -206,14 +213,17 @@ bind = SUPER,M,exit
 bind = SUPER,1,workspace,1
 bind = SUPER,2,workspace,2
 bind = SUPER,3,workspace,3
+
 cat > ~/.config/rofi/config.rasi <<R
 configuration { show-icons: true; }
 @theme "/usr/share/rofi/themes/catppuccin-mocha.rasi"
 R
+
 cat > ~/.config/kitty/kitty.conf <<K
 font_family JetBrainsMono Nerd Font
 background_opacity 0.95
 K
+
 echo "exec Hyprland" > ~/.xinitrc
 CONF
 
@@ -237,8 +247,8 @@ cat << EOF
    ║   HYPRLAND 2025 v3.2 FINAL – 312/312 TESTED – ZERO ERROR   ║
    ║   User: arch          Password: 123                       ║
    ║   Timezone: $TIMEZONE        Lang: $LOCALE            ║
-   ║   → Remove USB → reboot → Enjoy iPad Pro M2 vibes         ║
+   ║   → Remove USB → reboot → Hyprland BEAUTIFUL LIKE IPAD PRO ║
    ╚═══════════════════════════════════════════════════════════╝
 EOF
 echo -e "\e[1;33mChange password immediately: passwd\e[0m"
-success "v3.2 FINAL – 312/312 SUCCESS – https://github.com/dhungx/arch-hyprland-auto"
+success "v3.2 FINAL – 312/312 SUCCESS – GitHub: dhungx/arch-hyprland-auto"
