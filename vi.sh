@@ -221,7 +221,7 @@ set -e
 mkdir -p ~/.config/{hypr,waybar,rofi,dunst,kitty,swww,wlogout/icons}
 
 # Wallpaper (fallback chuẩn, không còn .mp4)
-WALL_URL="https://github.com/PilkDrinker/PilkDots/blob/master/wallpaper/dark-star.jpg?raw=1"
+WALL_URL="https://raw.githubusercontent.com/PilkDrinker/PilkDots/refs/heads/master/wallpaper/dark-star.jpg"
 mkdir -p ~/.config/hypr
 
 wget -q --timeout=10 --tries=3 -O ~/.config/hypr/wall.jpg "$WALL_URL" || {
