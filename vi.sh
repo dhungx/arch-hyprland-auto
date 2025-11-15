@@ -220,9 +220,13 @@ sudo -u arch bash <<'CONF'
 set -e
 mkdir -p ~/.config/{hypr,waybar,rofi,dunst,kitty,swww,wlogout/icons}
 
-# Wallpaper (fallback nếu mạng lỗi)
-wget -q --timeout=10 --tries=2 -O ~/.config/hypr/wall.jpg https://i.imgur.com/2nQ8b9H.jpg || true
-wget -q --timeout=10 --tries=2 -O ~/.config/hypr/wall.mp4 https://i.imgur.com/8b7Y5fM.mp4 || true
+# Wallpaper (fallback chuẩn, không còn .mp4)
+WALL_URL="https://github.com/PilkDrinker/PilkDots/blob/master/wallpaper/dark-star.jpg?raw=1"
+mkdir -p ~/.config/hypr
+
+wget -q --timeout=10 --tries=3 -O ~/.config/hypr/wall.jpg "$WALL_URL" || {
+    printf "\e[1;33m[!] Không tải được dark-star.jpg – giữ nền trống.\e[0m\n"
+}
 
 # Hyprland.conf + Wlogout + Rofi + Kitty
 cat > ~/.config/hypr/hyprland.conf <<'HY'
